@@ -8,6 +8,7 @@ pushes each new one to the free ntfy app. Runs every 30 min on GitHub Actions
     python trend_alert.py            # check and send
     python trend_alert.py --dry-run  # print what would be sent, send nothing
     python trend_alert.py --test     # send one test notification
+    python trend_alert.py --heartbeat --dry-run  # also show the daily "still watching" ping now
 
 Settings: edit THRESHOLDS / MAX_PER_DAY below. The ntfy topic comes from the NTFY_TOPIC
 environment variable (a GitHub secret), so it never sits in the code.
@@ -28,6 +29,7 @@ from pathlib import Path
 THRESHOLDS = {"US": 20000, "GB": 10000, "IN": 20000}
 COUNTRY = {"US": "🇺🇸 US", "GB": "🇬🇧 UK", "IN": "🇮🇳 India"}
 MAX_PER_DAY = 8  # never more alerts than this in 24 h
+HEARTBEAT_UTC = 4 * 60  # daily "still watching" ping from 04:00 UTC = 9:30 am India time
 FORGET_AFTER_DAYS = 4  # a topic can alert again after this long
 STATE = Path(__file__).with_name("seen.json")
 NS = {"ht": "https://trends.google.com/trending/rss"}
@@ -63,8 +65,8 @@ def fetch(geo: str) -> list[dict]:
     return items
 
 
-def push(topic: str, title: str, body: str, click: str = "") -> None:
-    headers = {"Title": title.encode("utf-8"), "Tags": "fire", "Priority": "high"}
+def push(topic: str, title: str, body: str, click: str = "", tags: str = "fire", priority: str = "high") -> None:
+    headers = {"Title": title.encode("utf-8"), "Tags": tags, "Priority": priority}
     if click:
         headers["Click"] = click
     req = urllib.request.Request(f"https://ntfy.sh/{topic}", data=body.encode("utf-8"), headers=headers, method="POST")
@@ -88,9 +90,10 @@ def main() -> None:
     state["seen"] = {k: v for k, v in state["seen"].items() if now - datetime.fromisoformat(v) < timedelta(days=FORGET_AFTER_DAYS)}
     state["sent"] = [t for t in state["sent"] if now - datetime.fromisoformat(t) < timedelta(hours=24)]
 
-    hits = []
+    hits, everything = [], []
     for geo, minimum in THRESHOLDS.items():
         for it in fetch(geo):
+            everything.append(it)
             key = it["title"].lower()
             if it["traffic"] >= minimum and key not in state["seen"]:
                 hits.append(it)
@@ -114,6 +117,22 @@ def main() -> None:
 
     if not hits:
         print("nothing over the thresholds right now")
+
+    # Once a day, a quiet "still watching" ping with the top 3 trends, so you know it's running.
+    today = now.date().isoformat()
+    if (now.hour * 60 + now.minute >= HEARTBEAT_UTC or "--heartbeat" in sys.argv) and state.get("heartbeat") != today:
+        top, names = [], set()
+        for it in sorted(everything, key=lambda it: -it["traffic"]):
+            if it["title"].lower() not in names:
+                names.add(it["title"].lower())
+                top.append(f"{len(top) + 1}. {it['title']} · {it['traffic']:,}+ · {COUNTRY[it['geo']]}")
+            if len(top) == 3:
+                break
+        body = "Top trends right now:\n" + "\n".join(top) if top else "No trend data right now."
+        print("heartbeat |", body.replace("\n", " | "))
+        if not dry:
+            push(topic, "☀️ Trend alert is running", body, "https://trends.google.com/trending?geo=US", tags="sunny", priority="low")
+            state["heartbeat"] = today
     if not dry:
         STATE.write_text(json.dumps(state, indent=1, ensure_ascii=False), encoding="utf-8")
 
