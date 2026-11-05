@@ -1,18 +1,19 @@
-"""Trend alert: pings your phone when a PERSON is spiking on Google search right now.
+"""Trend alert: pings your phone when something is spiking on Google search right now, minus sports.
 
-Reads Google Trends' public "Trending now" feed (no key, no AI) for a few countries, keeps only
-trends that are about a real person (checked on Wikidata: free, no key), drops game-day noise
-(matches, scores, standings, lotteries, prices), skips anything already sent, and pushes each new
-one to the free ntfy app. Runs every 30 min on GitHub Actions (.github/workflows/alert.yml), so
-your PC can be off.
+Reads Google Trends' public "Trending now" feed (no key, no AI) for a few countries, drops sports
+(matches, clubs, leagues, tournaments: they top the charts on every game day, however small the game)
+and everyday noise (lotteries, horoscopes, prices), skips anything already sent, and pushes each new
+spike to the free ntfy app. Any topic counts: a person, a company, a disaster, a film. Each one is
+looked up on Wikidata (free, no key) to say what it is and to spot sports. Runs every 30 min on
+GitHub Actions (.github/workflows/alert.yml), so your PC can be off.
 
-Why people only (owner, 5 Nov 2026): the channel tells true stories about people, and the first
-version mostly pinged football and cricket matches ("aek vs real madrid") and exchange rates.
+History (owner): v1 (3 Nov) alerted on anything big, so it was mostly football and cricket. v2
+(5 Nov) went people-only. v3 (5 Nov): "it could be anything", just not sports.
 
     python trend_alert.py            # check and send
     python trend_alert.py --dry-run  # print what would be sent, send nothing
     python trend_alert.py --test     # send one test notification
-    python trend_alert.py --heartbeat --dry-run  # also show the daily "people trending" digest now
+    python trend_alert.py --heartbeat --dry-run  # also show the daily digest now
 
 Settings: edit THRESHOLDS / MAX_PER_DAY below. The ntfy topic comes from the NTFY_TOPIC
 environment variable (a GitHub secret), so it never sits in the code.
@@ -30,28 +31,47 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-# Alert when a person's search volume is at least this much (per country). A death or a scandal
-# about someone well known usually passes 10k fast; routine news about them stays in the hundreds.
+# Alert when search volume is at least this much (per country). A death, a scandal or a disaster
+# usually passes 10k fast; routine news stays in the hundreds.
 THRESHOLDS = {"US": 10000, "GB": 5000, "IN": 10000}
 # News of a death alerts at half the volume, since those stories move fastest.
 DEATH_FACTOR = 0.5
+# Athletes trend on every game day: alert for them only at 3× the volume (a record, a scandal).
+ATHLETE_FACTOR = 3
 COUNTRY = {"US": "🇺🇸 US", "GB": "🇬🇧 UK", "IN": "🇮🇳 India"}
 MAX_PER_DAY = 8  # never more alerts than this in 24 h
 HEARTBEAT_UTC = 4 * 60  # daily digest from 04:00 UTC = 9:30 am India time
-DIGEST_SIZE = 5  # people in the daily digest
-DIGEST_MIN = 200  # ignore people below this volume in the digest
-DIGEST_FAME = 25  # …and people on fewer Wikipedias than this (role players' game-day news)
-REMEMBER_PEOPLE_DAYS = 7  # cache Wikidata answers, so each topic is looked up once a week
+DIGEST_SIZE = 5  # topics in the daily digest
+DIGEST_MIN = 500  # ignore topics below this volume in the digest
+REMEMBER_DAYS = 7  # cache Wikidata answers, so each topic is looked up once a week
 FORGET_AFTER_DAYS = 4  # a topic can alert again after this long
 STATE = Path(__file__).with_name("seen.json")
 NS = {"ht": "https://trends.google.com/trending/rss"}
-UA = {"User-Agent": "trend-alert/2.0 (github.com/Santhoshsiddhu75/trend-alert)"}
+UA = {"User-Agent": "trend-alert/3.0 (github.com/Santhoshsiddhu75/trend-alert)"}
 
-# Game-day and everyday noise: a person trending because a match is on isn't a story.
+# Sports, in the trend's title or its headline. Catches games even when the trend is just a city
+# ("liverpool") or a player.
+SPORTS = re.compile(
+    r"\bvs\.?\b|\bv\b|standings|scorecard|\bscores?\b|highlights|player (stats|ratings)|game summary"
+    r"|\bmatch\b|line-?up|injury report|fantasy|box score|ranking|\bfixtures?\b"
+    r"|premier league|champions league|la liga|serie a|bundesliga|europa league|\bfa cup\b|world cup|\bipl\b"
+    r"|\bt20\b|\bodi\b|\bnba\b|\bnfl\b|\bnhl\b|\bmlb\b|\bufc\b|\bf1\b|grand prix|\bsquad\b"
+    r"|kick-?off|innings|wickets?|\bgoals?\b|touchdown|\bplayoffs?\b|\bcoach\b|transfer|\bmanager\b"
+    r"|\bslump\b|\bderby\b|title race|\bfifty\b|\bcentury\b|\bruns\b|\bbowl(ed|er|ing)?\b|\bbatt(ing|er)\b"
+    r"|\bday (one|two|three|four|five)\b|\bpenalt(y|ies)\b|\bhat-?trick\b|\bstriker\b|\bquarterback\b",
+    re.I,
+)
+# Athletes, by Wikidata's description ("Indian cricketer", "American basketball player").
+ATHLETE = re.compile(
+    r"player|cricketer|footballer|athlete|boxer|golfer|tennis|racing driver|coach|wrestler|fighter|jockey"
+    r"|swimmer|sprinter|skater|cyclist|gymnast|pitcher|quarterback",
+    re.I,
+)
+# Everyday searches that are never a story.
 NOISE = re.compile(
-    r"\bvs\.?\b|\bv\b|standings|scorecard|\bscore\b|highlights|player stats|game summary|match preview"
-    r"|live updates|\blive\b|line-?up|prediction|\bodds\b|injury report|fantasy|box score|ranking"
-    r"|powerball|mega millions|lottery|jackpot|horoscope|weather|stock|exchange rate|\bprice\b|sale\b|deals",
+    r"powerball|mega millions|lottery|jackpot|horoscope|weather|stock market|share price|exchange rate"
+    r"|\bprice\b|\bsale\b|deals|black friday|\bdownload\b|\blogin\b|live updates|connections|wordle"
+    r"|crossword|hints and answers|^rain$|pound value|bank holiday|\bnear me\b",
     re.I,
 )
 DEATH = re.compile(r"\bdie[sd]\b|\bdead\b|death|passed away|\bpasses away\b|killed|obituary|tribute", re.I)
@@ -80,6 +100,7 @@ def fetch(geo: str) -> list[dict]:
                 "traffic": int(re.sub(r"\D", "", traffic) or 0),
                 "headline": (first.findtext("ht:news_item_title", "", NS) if first is not None else "").strip(),
                 "headlines": " ".join(n.findtext("ht:news_item_title", "", NS) for n in news),
+                "headlines_list": [n.findtext("ht:news_item_title", "", NS) for n in news],
                 "source": (first.findtext("ht:news_item_source", "", NS) if first is not None else "").strip(),
                 "url": (first.findtext("ht:news_item_url", "", NS) if first is not None else "").strip(),
             }
@@ -99,9 +120,10 @@ def wikidata(params: dict) -> dict:
     raise RuntimeError("unreachable")
 
 
-def lookup_person(title: str) -> dict | None:
-    """Wikidata's best match for the trend, if it's a human: name, description and how many
-    Wikipedias have a page on them (a rough fame score: Ronaldo ~200, a local politician ~3)."""
+def lookup(title: str) -> dict | None:
+    """Wikidata's best match for the trend: name, what it is, whether it's a person or sports-related,
+    and how many Wikipedias have a page on it (a rough fame score: Ronaldo ~200, a local politician
+    ~3). None when Wikidata has nothing."""
     words = re.sub(r"[,()]", " ", title).split()
     # "timothee chalamet dune" → also try without the last word; "prince harry, duke of sussex" →
     # also try the part before the comma.
@@ -115,13 +137,14 @@ def lookup_person(title: str) -> dict | None:
         qid = hits["search"][0]["id"]
         shown = hits["search"][0].get("display", {}).get("label", {}).get("value") or hits["search"][0].get("label")
         entity = wikidata({"action": "wbgetentities", "ids": qid, "props": "claims|sitelinks|labels|descriptions", "languages": "en"})["entities"][qid]
-        kinds = {c["mainsnak"].get("datavalue", {}).get("value", {}).get("id") for c in entity.get("claims", {}).get("P31", [])}
-        if "Q5" not in kinds:  # Q5 = human
-            return None
+        claims = entity.get("claims", {})
+        kinds = {c["mainsnak"].get("datavalue", {}).get("value", {}).get("id") for c in claims.get("P31", [])}
         return {
             "name": entity.get("labels", {}).get("en", {}).get("value") or shown or title.title(),
             "about": entity.get("descriptions", {}).get("en", {}).get("value", ""),
             "wikis": len(entity.get("sitelinks", {})),
+            "human": "Q5" in kinds,  # Q5 = human
+            "sport": "P641" in claims,  # P641 = sport: clubs, leagues, tournaments, athletes
         }
     return None
 
@@ -141,7 +164,7 @@ def main() -> None:
     if not dry and not topic:
         sys.exit("Set NTFY_TOPIC (the ntfy topic your phone subscribes to).")
     if "--test" in sys.argv:
-        push(topic, "✅ Trend alert is working", "You'll get a ping like this when a person spikes on Google.")
+        push(topic, "✅ Trend alert is working", "You'll get a ping like this when something big spikes on Google.")
         print("test sent")
         return
 
@@ -156,77 +179,95 @@ def main() -> None:
     today = now.date().isoformat()
     digest_due = (now.hour * 60 + now.minute >= HEARTBEAT_UTC or "--heartbeat" in sys.argv) and state.get("heartbeat") != today
 
-    # Wikidata answers, kept for a week: {topic: {"at": time, "who": person or None}}.
+    # Wikidata answers, kept for a week: {topic: {"at": time, "who": answer or None}}. Answers saved
+    # by v2 (people only, no "sport" field) are dropped and looked up again.
     cache = {
         k: v
-        for k, v in state.get("people", {}).items()
-        if now - datetime.fromisoformat(v["at"]) < timedelta(days=REMEMBER_PEOPLE_DAYS)
+        for k, v in state.get("wikidata", {}).items()
+        if now - datetime.fromisoformat(v["at"]) < timedelta(days=REMEMBER_DAYS)
     }
-    state["people"] = cache
+    state.pop("people", None)
+    state["wikidata"] = cache
 
-    def person(it: dict) -> dict | None:
+    def identify(it: dict) -> tuple[bool, dict | None]:
+        """(looked up OK, Wikidata's answer or None)."""
         key = it["title"].lower()
         if key not in cache:
             try:
-                who = lookup_person(it["title"])
+                who = lookup(it["title"])
             except Exception as e:  # Wikidata down: skip for now, try again next run
                 print(f"wikidata failed for {it['title']!r}: {e}")
-                return None
+                return False, None
             cache[key] = {"at": now.isoformat(), "who": who}
             time.sleep(1)  # be gentle with Wikidata
-        return cache[key]["who"]
+        return True, cache[key]["who"]
 
     hits, digest = [], []
     for geo, minimum in THRESHOLDS.items():
         for it in fetch(geo):
-            text = f"{it['title']} {it['headlines']}"
             if NOISE.search(it["title"]) or NOISE.search(it["headline"]):
                 continue
-            it["death"] = bool(DEATH.search(text))
+            # Sports: in the title, the top headline, or two of the trend's headlines.
+            sporty = sum(bool(SPORTS.search(h)) for h in it["headlines_list"])
+            if SPORTS.search(it["title"]) or SPORTS.search(it["headline"]) or sporty >= 2:
+                continue
+            it["death"] = bool(DEATH.search(f"{it['title']} {it['headlines']}"))
             needed = minimum * (DEATH_FACTOR if it["death"] else 1)
             want_alert = it["traffic"] >= needed and it["title"].lower() not in state["seen"]
             want_digest = digest_due and it["traffic"] >= DIGEST_MIN
             if not (want_alert or want_digest):
                 continue
-            who = person(it)
-            if who is None:
+            ok, who = identify(it)
+            if not ok:
                 continue
+            if who and who["sport"] and not who["human"]:
+                continue  # a club, a league, a tournament
+            athlete = bool(who and who["human"] and ATHLETE.search(who["about"]))
+            if athlete and not it["death"]:
+                want_digest = False  # athletes are in the news every game day
+                if it["traffic"] < needed * ATHLETE_FACTOR:
+                    want_alert = False
             it["who"] = who
             if want_alert:
                 hits.append(it)
-            if want_digest and who["wikis"] >= DIGEST_FAME:
+            if want_digest:
                 digest.append(it)
     hits.sort(key=lambda it: -it["traffic"])
+
+    def describe(it: dict) -> tuple[str, str]:
+        who = it["who"]
+        name = who["name"] if who else it["title"].title()
+        about = f"{who['about']} · on {who['wikis']} Wikipedias" if who and who["about"] else ""
+        return name, about
 
     for it in hits:
         key = it["title"].lower()
         if key in state["seen"]:
-            continue  # same person spiking in two countries: one alert
+            continue  # same topic spiking in two countries: one alert
         if len(state["sent"]) >= MAX_PER_DAY:
             print("daily cap reached")
             break
-        who = it["who"]
+        name, about = describe(it)
         mark = "🕯️" if it["death"] else "🔥"
-        title = f"{mark} {who['name']} · {it['traffic']:,}+ searches · {COUNTRY[it['geo']]}"
-        lines = [f"{who['about']} · on {who['wikis']} Wikipedias" if who["about"] else f"on {who['wikis']} Wikipedias"]
-        if it["headline"]:
-            lines.append(it["headline"] + (f" ({it['source']})" if it["source"] else ""))
+        title = f"{mark} {name} · {it['traffic']:,}+ searches · {COUNTRY[it['geo']]}"
+        headline = it["headline"] + (f" ({it['source']})" if it["source"] else "")
+        lines = [line for line in (about, headline) if line]
         click = it["url"] or "https://www.google.com/search?q=" + urllib.parse.quote(it["title"])
         print(title, "|", " | ".join(lines))
         if not dry:
-            push(topic, title, "\n".join(lines), click, tags="candle" if it["death"] else "fire")
+            push(topic, title, "\n".join(lines) or "Tap to see why it's trending", click, tags="candle" if it["death"] else "fire")
             state["sent"].append(now.isoformat())
         state["seen"][key] = now.isoformat()
 
     if not hits:
-        print("no person over the thresholds right now")
+        print("nothing over the thresholds right now")
 
-    # Once a day, a quiet digest of the people trending most, so you know it's running and can spot
-    # a rising story early.
+    # Once a day, a quiet digest of the biggest non-sports trends, so you know it's running and can
+    # spot a rising story early.
     if digest_due:
         top, names = [], set()
         for it in sorted(digest, key=lambda it: -it["traffic"]):
-            name = it["who"]["name"]
+            name, _ = describe(it)
             if name.lower() in names:
                 continue
             names.add(name.lower())
@@ -234,10 +275,10 @@ def main() -> None:
             top.append(f"{len(top) + 1}. {name} · {it['traffic']:,}+ · {COUNTRY[it['geo']]}\n   {why}")
             if len(top) == DIGEST_SIZE:
                 break
-        body = "\n".join(top) if top else "No people trending right now."
+        body = "\n".join(top) if top else "Nothing big trending right now."
         print("digest |", body.replace("\n", " | "))
         if not dry:
-            push(topic, "☀️ People trending today", body, "https://trends.google.com/trending?geo=US", tags="sunny", priority="low")
+            push(topic, "☀️ Trending today (no sports)", body, "https://trends.google.com/trending?geo=US", tags="sunny", priority="low")
             state["heartbeat"] = today
     if not dry:
         STATE.write_text(json.dumps(state, indent=1, ensure_ascii=False), encoding="utf-8")
