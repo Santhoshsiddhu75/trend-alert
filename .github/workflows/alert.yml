@@ -2,7 +2,7 @@ name: Trend alert
 
 on:
   schedule:
-    - cron: "*/30 * * * *" # every 30 minutes (GitHub may delay a few minutes at busy times)
+    - cron: "13,43 * * * *" # every 30 minutes (GitHub may delay a few minutes at busy times)
   workflow_dispatch: {} # lets you run it by hand from the Actions tab
 
 permissions:
