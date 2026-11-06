@@ -8,14 +8,16 @@
   "exchange rate": "2026-11-04T23:51:10.113633+00:00",
   "russell brand": "2026-11-05T15:26:46.224854+00:00",
   "vote big brother": "2026-11-05T21:34:37.369986+00:00",
-  "royal mail undelivered mail londonderry": "2026-11-05T21:34:37.369986+00:00"
+  "royal mail undelivered mail londonderry": "2026-11-05T21:34:37.369986+00:00",
+  "ftse 100": "2026-11-06T09:21:59.281911+00:00"
  },
  "sent": [
   "2026-11-05T15:26:46.224854+00:00",
   "2026-11-05T21:34:37.369986+00:00",
-  "2026-11-05T21:34:37.369986+00:00"
+  "2026-11-05T21:34:37.369986+00:00",
+  "2026-11-06T09:21:59.281911+00:00"
  ],
- "heartbeat": "2026-11-05",
+ "heartbeat": "2026-11-06",
  "wikidata": {
   "russell brand": {
    "at": "2026-11-05T15:26:46.224854+00:00",
@@ -34,6 +36,78 @@
   "royal mail undelivered mail londonderry": {
    "at": "2026-11-05T21:34:37.369986+00:00",
    "who": null
+  },
+  "el niño": {
+   "at": "2026-11-06T09:21:59.281911+00:00",
+   "who": {
+    "name": "El Niño",
+    "about": "1998 album",
+    "wikis": 2,
+    "human": false,
+    "sport": false
+   }
+  },
+  "sorana cirstea": {
+   "at": "2026-11-06T09:21:59.281911+00:00",
+   "who": {
+    "name": "Sorana Cîrstea",
+    "about": "Romanian tennis player",
+    "wikis": 36,
+    "human": true,
+    "sport": true
+   }
+  },
+  "zelda switch 2 console": {
+   "at": "2026-11-06T09:21:59.281911+00:00",
+   "who": null
+  },
+  "legend of zelda switch 2": {
+   "at": "2026-11-06T09:21:59.281911+00:00",
+   "who": null
+  },
+  "john healey hmrc bank account powers": {
+   "at": "2026-11-06T09:21:59.281911+00:00",
+   "who": null
+  },
+  "ftse 250": {
+   "at": "2026-11-06T09:21:59.281911+00:00",
+   "who": {
+    "name": "FTSE 250 Index",
+    "about": "British stock market index",
+    "wikis": 18,
+    "human": false,
+    "sport": false
+   }
+  },
+  "remembrance day": {
+   "at": "2026-11-06T09:21:59.281911+00:00",
+   "who": {
+    "name": "Remembrance Day",
+    "about": "holiday commemorating the end of the Sri Lankan Civil War",
+    "wikis": 2,
+    "human": false,
+    "sport": false
+   }
+  },
+  "ftse 100": {
+   "at": "2026-11-06T09:21:59.281911+00:00",
+   "who": {
+    "name": "FTSE 100 Index",
+    "about": "British stock market index",
+    "wikis": 53,
+    "human": false,
+    "sport": false
+   }
+  },
+  "হাতি": {
+   "at": "2026-11-06T09:21:59.281911+00:00",
+   "who": {
+    "name": "elephant",
+    "about": "large terrestrial mammals from Africa and Asia",
+    "wikis": 221,
+    "human": false,
+    "sport": false
+   }
   }
  }
 }
