@@ -8,7 +8,8 @@ looked up on Wikidata (free, no key) to say what it is and to spot sports. Runs 
 GitHub Actions (.github/workflows/alert.yml), so your PC can be off.
 
 History (owner): v1 (3 Nov) alerted on anything big, so it was mostly football and cricket. v2
-(5 Nov) went people-only. v3 (5 Nov): "it could be anything", just not sports.
+(5 Nov) went people-only. v3 (5 Nov): "it could be anything", just not sports. v4 (6 Nov): no stocks or
+markets, UK alerts at the same 10k bar as everywhere else, and nothing under 5k in the daily digest.
 
     python trend_alert.py            # check and send
     python trend_alert.py --dry-run  # print what would be sent, send nothing
@@ -33,7 +34,7 @@ from pathlib import Path
 
 # Alert when search volume is at least this much (per country). A death, a scandal or a disaster
 # usually passes 10k fast; routine news stays in the hundreds.
-THRESHOLDS = {"US": 10000, "GB": 5000, "IN": 10000}
+THRESHOLDS = {"US": 10000, "GB": 10000, "IN": 10000}
 # News of a death alerts at half the volume, since those stories move fastest.
 DEATH_FACTOR = 0.5
 # Athletes trend on every game day: alert for them only at 3× the volume (a record, a scandal).
@@ -42,7 +43,7 @@ COUNTRY = {"US": "🇺🇸 US", "GB": "🇬🇧 UK", "IN": "🇮🇳 India"}
 MAX_PER_DAY = 8  # never more alerts than this in 24 h
 HEARTBEAT_UTC = 4 * 60  # daily digest from 04:00 UTC = 9:30 am India time
 DIGEST_SIZE = 5  # topics in the daily digest
-DIGEST_MIN = 500  # ignore topics below this volume in the digest
+DIGEST_MIN = 5000  # ignore topics below this volume in the digest
 REMEMBER_DAYS = 7  # cache Wikidata answers, so each topic is looked up once a week
 FORGET_AFTER_DAYS = 4  # a topic can alert again after this long
 STATE = Path(__file__).with_name("seen.json")
@@ -74,6 +75,14 @@ NOISE = re.compile(
     r"|crossword|hints and answers|^rain$|pound value|bank holiday|\bnear me\b",
     re.I,
 )
+# Stocks and markets, in the title or top headline, or by Wikidata's description. "Shares" isn't here:
+# headlines use it for "X shares a photo".
+FINANCE = re.compile(
+    r"\bftse\b|nasdaq|dow jones|s&p 500|nikkei|sensex|\bnifty\b|\bstocks?\b|stock market|sell-?off"
+    r"|market (early )?(call|close|open|report)|wall street|bitcoin|crypto",
+    re.I,
+)
+FINANCE_KIND = re.compile(r"stock (market|exchange)|market index|currency|cryptocurrency", re.I)
 DEATH = re.compile(r"\bdie[sd]\b|\bdead\b|death|passed away|\bpasses away\b|killed|obituary|tribute", re.I)
 
 
@@ -207,6 +216,8 @@ def main() -> None:
         for it in fetch(geo):
             if NOISE.search(it["title"]) or NOISE.search(it["headline"]):
                 continue
+            if FINANCE.search(it["title"]) or FINANCE.search(it["headline"]):
+                continue
             # Sports: in the title, the top headline, or two of the trend's headlines.
             sporty = sum(bool(SPORTS.search(h)) for h in it["headlines_list"])
             if SPORTS.search(it["title"]) or SPORTS.search(it["headline"]) or sporty >= 2:
@@ -222,6 +233,8 @@ def main() -> None:
                 continue
             if who and who["sport"] and not who["human"]:
                 continue  # a club, a league, a tournament
+            if who and FINANCE_KIND.search(who["about"]):
+                continue  # a stock index, a currency
             athlete = bool(who and who["human"] and ATHLETE.search(who["about"]))
             if athlete and not it["death"]:
                 want_digest = False  # athletes are in the news every game day
