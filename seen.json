@@ -6,7 +6,7 @@
   "ticketmaster": "2026-11-12T17:04:58.351477+00:00"
  },
  "sent": [],
- "heartbeat": "2026-11-13",
+ "heartbeat": "2026-11-14",
  "wikidata": {
   "hanuman ansh movie": {
    "at": "2026-11-07T08:45:35.270327+00:00",
@@ -122,6 +122,26 @@
     "wikis": 5,
     "human": true,
     "sport": true
+   }
+  },
+  "gta vi map": {
+   "at": "2026-11-14T07:01:54.310707+00:00",
+   "who": {
+    "name": "Grand Theft Auto VI",
+    "about": "2026 video game developed and published by Rockstar Games",
+    "wikis": 68,
+    "human": false,
+    "sport": false
+   }
+  },
+  "రాయితీ": {
+   "at": "2026-11-14T07:01:54.310707+00:00",
+   "who": {
+    "name": "subsidy",
+    "about": "financial support to an economic sector",
+    "wikis": 57,
+    "human": false,
+    "sport": false
    }
   }
  }
