@@ -7,31 +7,14 @@
   "jason movie cast": "2026-11-18T19:36:03.313092+00:00",
   "vulnerability": "2026-11-18T19:36:03.313092+00:00",
   "sammy kershaw": "2026-11-19T01:29:18.386642+00:00",
-  "al gore": "2026-11-19T18:40:27.821271+00:00"
+  "al gore": "2026-11-19T18:40:27.821271+00:00",
+  "clima": "2026-11-21T13:01:24.229185+00:00"
  },
- "sent": [],
+ "sent": [
+  "2026-11-21T13:01:24.229185+00:00"
+ ],
  "heartbeat": "2026-11-21",
  "wikidata": {
-  "gta vi map": {
-   "at": "2026-11-14T07:01:54.310707+00:00",
-   "who": {
-    "name": "Grand Theft Auto VI",
-    "about": "2026 video game developed and published by Rockstar Games",
-    "wikis": 68,
-    "human": false,
-    "sport": false
-   }
-  },
-  "రాయితీ": {
-   "at": "2026-11-14T07:01:54.310707+00:00",
-   "who": {
-    "name": "subsidy",
-    "about": "financial support to an economic sector",
-    "wikis": 57,
-    "human": false,
-    "sport": false
-   }
-  },
   "আগামীকালের আবহাওয়া": {
    "at": "2026-11-15T17:07:32.192940+00:00",
    "who": null
@@ -146,6 +129,16 @@
     "wikis": 5,
     "human": true,
     "sport": true
+   }
+  },
+  "clima": {
+   "at": "2026-11-21T13:01:24.229185+00:00",
+   "who": {
+    "name": "climate change",
+    "about": "ongoing human-caused changes to Earth's climate system, driven primarily by fossil fuel combustion since the Industrial Revolution; encompasses global warming, rising sea levels, and increased frequency of extreme weather events",
+    "wikis": 136,
+    "human": false,
+    "sport": false
    }
   }
  }
