@@ -1,6 +1,5 @@
 {
  "seen": {
-  "tornado watch": "2026-11-22T00:19:14.392116+00:00",
   "metacritic gta vi": "2026-11-22T07:27:49.255256+00:00",
   "tom jackson espn": "2026-11-22T15:41:25.413172+00:00",
   "mariella": "2026-11-22T21:17:33.521838+00:00",
@@ -13,18 +12,8 @@
   "2026-11-25T12:50:15.176715+00:00",
   "2026-11-25T22:29:49.123378+00:00"
  ],
- "heartbeat": "2026-11-25",
+ "heartbeat": "2026-11-26",
  "wikidata": {
-  "sammy kershaw": {
-   "at": "2026-11-19T01:29:18.386642+00:00",
-   "who": {
-    "name": "Sammy Kershaw",
-    "about": "American country musician",
-    "wikis": 11,
-    "human": true,
-    "sport": false
-   }
-  },
   "john cornyn": {
    "at": "2026-11-19T09:30:03.016478+00:00",
    "who": {
